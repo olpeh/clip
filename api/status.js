@@ -1,22 +1,18 @@
-// In-memory store: pin -> { content, expiresAt: number, consumed: boolean }
-// Note: This will be reset on each function invocation in production
-// For persistence, you'd need to use a database like Vercel KV, MongoDB, etc.
+const { createClient } = require("redis");
 
-const store = new Map();
+// Create Redis client
+const redis = createClient({
+  url: process.env.REDIS_URL || "redis://localhost:6379",
+});
+
+// Connect to Redis
+redis.connect().catch(console.error);
 
 function isValidPin(pin) {
   return typeof pin === "string" && /^[0-9]{4}$/.test(pin);
 }
 
-function cleanupIfExpired(pin) {
-  const entry = store.get(pin);
-  if (!entry) return;
-  if (Date.now() >= entry.expiresAt) {
-    store.delete(pin);
-  }
-}
-
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Enable CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -38,27 +34,32 @@ module.exports = function handler(req, res) {
     return res.status(400).json({ error: "PIN must be exactly 4 digits." });
   }
 
-  cleanupIfExpired(pin);
+  try {
+    const key = `clip:${pin}`;
+    const dataStr = await redis.get(key);
 
-  const entry = store.get(pin);
+    if (!dataStr) {
+      return res.json({ exists: false, consumed: false, expiresInSeconds: 0 });
+    }
 
-  if (!entry) {
-    return res.json({ exists: false, consumed: false, expiresInSeconds: 0 });
+    const entry = JSON.parse(dataStr);
+    const expiresIn = Math.max(
+      0,
+      Math.ceil((entry.expiresAt - Date.now()) / 1000)
+    );
+
+    if (expiresIn === 0) {
+      await redis.del(key);
+      return res.json({ exists: false, consumed: false, expiresInSeconds: 0 });
+    }
+
+    return res.json({
+      exists: true,
+      consumed: entry.consumed,
+      expiresInSeconds: expiresIn,
+    });
+  } catch (error) {
+    console.error("Error checking status:", error);
+    return res.status(500).json({ error: "Failed to check status" });
   }
-
-  const expiresIn = Math.max(
-    0,
-    Math.ceil((entry.expiresAt - Date.now()) / 1000)
-  );
-
-  if (expiresIn === 0) {
-    store.delete(pin);
-    return res.json({ exists: false, consumed: false, expiresInSeconds: 0 });
-  }
-
-  return res.json({
-    exists: true,
-    consumed: entry.consumed,
-    expiresInSeconds: expiresIn,
-  });
 };

@@ -54,16 +54,48 @@ This application is configured for Vercel serverless deployment.
    npm run dev
    ```
 
+## Database Setup (Required for Production)
+
+This application uses **Redis** for persistent data storage. You need to set up a Redis database and configure the connection.
+
+### 1. Set Up Redis Database
+
+You can use any Redis provider:
+
+- **Redis Cloud** (recommended for Vercel)
+- **Upstash Redis**
+- **AWS ElastiCache**
+- **Google Cloud Memorystore**
+- **Self-hosted Redis**
+
+### 2. Configure Environment Variables
+
+Add the `REDIS_URL` environment variable to your Vercel project:
+
+1. Go to your Vercel project dashboard
+2. Navigate to "Settings" → "Environment Variables"
+3. Add `REDIS_URL` with your Redis connection string
+4. Deploy your project
+
+### 3. Local Development
+
+For local development, create a `.env.local` file in your project root:
+
+```bash
+REDIS_URL=redis://localhost:6379
+```
+
+Or if using a cloud Redis service:
+
+```bash
+REDIS_URL=redis://username:password@host:port
+```
+
 ## Important Notes
 
-⚠️ **Data Persistence**: This demo uses in-memory storage that resets on each serverless function invocation. In production, you should use a persistent database like:
+✅ **Data Persistence**: This application uses Redis for persistent data storage across serverless function invocations.
 
-- Vercel KV (Redis)
-- MongoDB
-- PostgreSQL
-- Supabase
-
-⚠️ **Security**: This is a demo application. Do not use for sensitive data as content is stored in memory and could be accessible to other users on the same serverless instance.
+⚠️ **Security**: While this uses a proper database, it's still a demo application. Do not use for highly sensitive data as content is stored in plain text.
 
 ## API Endpoints
 

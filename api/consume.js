@@ -1,22 +1,18 @@
-// In-memory store: pin -> { content, expiresAt: number, consumed: boolean }
-// Note: This will be reset on each function invocation in production
-// For persistence, you'd need to use a database like Vercel KV, MongoDB, etc.
+const { createClient } = require("redis");
 
-const store = new Map();
+// Create Redis client
+const redis = createClient({
+  url: process.env.REDIS_URL || "redis://localhost:6379",
+});
+
+// Connect to Redis
+redis.connect().catch(console.error);
 
 function isValidPin(pin) {
   return typeof pin === "string" && /^[0-9]{4}$/.test(pin);
 }
 
-function cleanupIfExpired(pin) {
-  const entry = store.get(pin);
-  if (!entry) return;
-  if (Date.now() >= entry.expiresAt) {
-    store.delete(pin);
-  }
-}
-
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Enable CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -38,29 +34,35 @@ module.exports = function handler(req, res) {
     return res.status(400).json({ error: "PIN must be exactly 4 digits." });
   }
 
-  cleanupIfExpired(pin);
+  try {
+    const key = `clip:${pin}`;
+    const dataStr = await redis.get(key);
 
-  const entry = store.get(pin);
+    if (!dataStr) {
+      return res.status(404).json({ error: "Not found or expired." });
+    }
 
-  if (!entry) {
-    return res.status(404).json({ error: "Not found or expired." });
+    const entry = JSON.parse(dataStr);
+
+    if (entry.consumed) {
+      return res.status(410).json({ error: "Content already copied once." });
+    }
+
+    if (Date.now() >= entry.expiresAt) {
+      await redis.del(key);
+      return res.status(404).json({ error: "Not found or expired." });
+    }
+
+    // Mark as consumed and update in database
+    entry.consumed = true;
+    const content = entry.content;
+
+    // Update the entry in Redis (keep the same expiration)
+    await redis.set(key, JSON.stringify(entry));
+
+    return res.json({ ok: true, content });
+  } catch (error) {
+    console.error("Error consuming data:", error);
+    return res.status(500).json({ error: "Failed to retrieve data" });
   }
-
-  if (entry.consumed) {
-    return res.status(410).json({ error: "Content already copied once." });
-  }
-
-  if (Date.now() >= entry.expiresAt) {
-    store.delete(pin);
-    return res.status(404).json({ error: "Not found or expired." });
-  }
-
-  // Mark as consumed and return content
-  entry.consumed = true;
-  const content = entry.content;
-
-  // Optionally clear content to further reduce exposure
-  entry.content = "";
-
-  return res.json({ ok: true, content });
 };

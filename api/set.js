@@ -1,23 +1,20 @@
-// In-memory store: pin -> { content, expiresAt: number, consumed: boolean }
-// Note: This will be reset on each function invocation in production
-// For persistence, you'd need to use a database like Vercel KV, MongoDB, etc.
+const { createClient } = require("redis");
 
-const store = new Map();
 const EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+// Create Redis client
+const redis = createClient({
+  url: process.env.REDIS_URL || "redis://localhost:6379",
+});
+
+// Connect to Redis
+redis.connect().catch(console.error);
 
 function isValidPin(pin) {
   return typeof pin === "string" && /^[0-9]{4}$/.test(pin);
 }
 
-function cleanupIfExpired(pin) {
-  const entry = store.get(pin);
-  if (!entry) return;
-  if (Date.now() >= entry.expiresAt) {
-    store.delete(pin);
-  }
-}
-
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Enable CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -45,11 +42,19 @@ module.exports = function handler(req, res) {
       .json({ error: "Content must be a non-empty string." });
   }
 
-  const expiresAt = Date.now() + EXPIRY_MS;
-  store.set(pin, { content, expiresAt, consumed: false });
+  try {
+    const expiresAt = Date.now() + EXPIRY_MS;
+    const data = { content, expiresAt, consumed: false };
 
-  return res.json({
-    ok: true,
-    expiresInSeconds: Math.ceil((expiresAt - Date.now()) / 1000),
-  });
+    // Store in Redis with automatic expiration (5 minutes)
+    await redis.setEx(`clip:${pin}`, 300, JSON.stringify(data));
+
+    return res.json({
+      ok: true,
+      expiresInSeconds: Math.ceil((expiresAt - Date.now()) / 1000),
+    });
+  } catch (error) {
+    console.error("Error storing data:", error);
+    return res.status(500).json({ error: "Failed to store data" });
+  }
 };

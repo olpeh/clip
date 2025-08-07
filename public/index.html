@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>One-Time Public Clipboard</title>
+
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>One-Time Public Clipboard</h1>
+
+      <p class="subtitle">
+        Share a snippet protected by a 4-digit PIN. It can be copied only once
+        and expires in 5 minutes.
+      </p>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Publish</h2>
+
+          <label for="set-pin">4-digit PIN</label>
+
+          <input
+            id="set-pin"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="4"
+            placeholder="1234"
+          />
+
+          <label for="set-content">Content</label>
+
+          <textarea
+            id="set-content"
+            rows="6"
+            placeholder="Type or paste content here..."
+          ></textarea>
+
+          <button id="set-btn">Publish (5 min)</button>
+
+          <div class="note">
+            Anyone with the PIN can retrieve it once before it expires.
+          </div>
+
+          <div id="set-status" class="status"></div>
+        </section>
+
+        <section class="card">
+          <h2>Retrieve & Copy</h2>
+
+          <label for="get-pin">4-digit PIN</label>
+
+          <input
+            id="get-pin"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="4"
+            placeholder="1234"
+          />
+
+          <button id="status-btn">Check Status</button>
+
+          <div id="status" class="status"></div>
+
+          <button id="consume-btn" class="primary">
+            Retrieve and Copy Once
+          </button>
+
+          <textarea
+            id="preview"
+            rows="6"
+            readonly
+            placeholder="Retrieved content will appear here (after copy)"
+          ></textarea>
+        </section>
+      </div>
+
+      <footer>
+        <small
+          >This demo stores data in memory on the server. Do not use for
+          secrets.</small
+        >
+      </footer>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

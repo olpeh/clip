@@ -34,6 +34,11 @@ function isValidPin(pin) {
   return /^[0-9]{4}$/.test(pin);
 }
 
+function randomPin() {
+  const [n] = crypto.getRandomValues(new Uint32Array(1));
+  return String(n % 10000).padStart(4, "0");
+}
+
 function setStatus(el, msg, cls = "") {
   el.textContent = msg || "";
 
@@ -43,6 +48,8 @@ function setStatus(el, msg, cls = "") {
 const setPinEl = $("set-pin");
 
 const setContentEl = $("set-content");
+
+setPinEl.value = randomPin();
 
 const setBtn = $("set-btn");
 

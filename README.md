@@ -4,7 +4,7 @@ A simple web application for sharing temporary content protected by a 4-digit PI
 
 ## Features
 
-- Share content with a 4-digit PIN
+- Share content with a 4-digit PIN (a random one is suggested by default)
 - Content expires after 5 minutes
 - Content can only be retrieved once
 - Simple, clean interface
@@ -40,6 +40,16 @@ This application is configured for Vercel serverless deployment.
    ```bash
    vercel --prod
    ```
+
+### Release tags
+
+Pushing to `main` deploys to production. Tag every deploy with a git tag on the deployed commit, named by date: `YYYY-MM-DD`, and `YYYY-MM-DD_2`, `_3`, ... for further deploys the same day. Push the tag to origin:
+
+```bash
+git tag --sort=-creatordate   # check for existing tags first
+git tag 2026-10-05
+git push origin 2026-10-05
+```
 
 ### Local Development
 
